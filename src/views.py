@@ -20,3 +20,4 @@ def main_page_view(request):
         return JsonResponse({'original': datetime_str, 'formatted': formatted_date})
     except ValueError:
         return JsonResponse({'error': 'Некорректный формат даты и времени'}, status=400)
+
