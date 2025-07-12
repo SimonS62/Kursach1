@@ -8,19 +8,20 @@ def main_function(date_str):
         dt = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
     except ValueError:
         return json.dumps({"error": "Некорректный формат даты"})
-
+    start_dt = dt.replace(day=1, hour=0, minute=0, second=0)
     # Получаем приветствие
-    greeting = get_greeting(dt.hour)
+    greeting = get_greeting(datetime.now().hour)
 
-    # Пример данных о транзакциях (заглушки)
-    transactions = [
-        {'card_number': '1234567812345678', 'amount': 1500},
-        {'card_number': '8765432187654321', 'amount': 2500},
-        {'card_number': '1111222233334444', 'amount': 500},
-        {'card_number': '5555666677778888', 'amount': 3000},
-        {'card_number': '9999000011112222', 'amount': 200},
-        {'card_number': '3333444455556666', 'amount': 3500},
-    ]
+    # data = считать pd.read_exel(...) данные
+    # data_for_processing = отфильтровать данные по start_dt > dt
+    # собрать данные по картам из data_for_processing
+    # собрать топ-транзакции по data_for_processing
+    # user_settings = считать списки из user_settings.json
+    user_currencies = user_settings['user_currencies']
+    user_stocks = user_settings['user_currencies']
+    # запросить курсы валют
+    # запросить стоимость акций
+
 
     # Обработка транзакций
     total_expenses = get_total_expenses(transactions)

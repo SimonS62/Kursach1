@@ -145,4 +145,3 @@ result = {
     'period_end': end_date.strftime('%Y-%m-%d')
 }
 return result
-
