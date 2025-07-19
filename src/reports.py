@@ -61,14 +61,15 @@ def spending_by_category(transactions: pd.DataFrame,
     end_date = parse_date(date)
     start_date = end_date - pd.DateOffset(months=3)
 
-    # Предполагается, что транзакции имеют колонки: 'date' (datetime), 'category' (str), 'amount' (float)
+    # Транзакции имеют колонки: 'Дата операции' (datetime), 'Категория' (str), 'Сумма операции' (float)
     df_filtered = transactions[
-        (transactions['date'] >= start_date) &
-        (transactions['date'] <= end_date) &
-        (transactions['category'] == category)
+        (transactions['Дата операции'] >= start_date) &
+        (transactions['Дата операции'] <= end_date) &
+        (transactions['Категория'] == category) &
+        (transactions['Сумма операции'] < 0)
         ]
 
-    total_expenses = df_filtered['amount'].sum()
+    total_expenses = df_filtered['Сумма операции'].sum()
 
     result = {
         'category': category,
@@ -79,69 +80,7 @@ def spending_by_category(transactions: pd.DataFrame,
     }
     return result
 
-
-@save_report()
-def spending_by_weekday(transactions: pd.DataFrame,
-                        date: Optional[str] = None) -> dict:
-    """
-    Возвращает средние траты в каждый из дней недели за последние 3 месяца.
-    """
-    end_date = parse_date(date)
-    start_date = end_date - pd.DateOffset(months=3)
-
-    df_filtered = transactions[
-        (transactions['date'] >= start_date) &
-        (transactions['date'] <= end_date)
-        ].copy()
-
-    # Добавляем колонку с днем недели
-    df_filtered['weekday'] = df_filtered['date'].dt.day_name()
-
-    # Группируем по дню недели и считаем средний расход
-    grouped = df_filtered.groupby('weekday')['amount'].mean()
-
-    # Порядок дней недели для вывода
-    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-    # Создаем результат с учетом порядка дней
-    result = {day: float(grouped.get(day, 0)) for day in days_order}
-
-    return result
-
-
-@save_report()
-def spending_by_workday(transactions: pd.DataFrame,
-                        date: Optional[str] = None) -> dict:
-    """
-    Возвращает средние траты в рабочие и выходные дни за последние 3 месяца.
-    """
-    end_date = parse_date(date)
-    start_date = end_date - pd.DateOffset(months=3)
-
-    df_filtered = transactions[
-        (transactions['date'] >= start_date) &
-        (transactions['date'] <= end_date)
-        ].copy()
-
-    # Добавляем колонку с днем недели
-    df_filtered['weekday'] = df_filtered['date'].dt.day_name()
-
-    # Определяем рабочие и выходные дни
-    workdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-
-    workday_expenses_series = df_filtered[df_filtered['weekday'].isin(workdays)]['amount']
-
-    weekend_expenses_series = df_filtered[~df_filtered['weekday'].isin(workdays)]['amount']
-
-    workday_avg = float(workday_expenses_series.mean()) if not workday_expenses_series.empty else 0.0
-
-
-weekend_avg = float(weekend_expenses_series.mean()) if not weekend_expenses_series.empty else 0.0
-
-result = {
-    'workdays_avg_expense': workday_avg,
-    'weekend_avg_expense': weekend_avg,
-    'period_start': start_date.strftime('%Y-%m-%d'),
-    'period_end': end_date.strftime('%Y-%m-%d')
-}
-return result
+if __name__ == '__main__':
+    data = pd.read_excel('../data/operations.xlsx', parse_dates=['Дата операции'])
+    result = spending_by_category(data, 'Фастфуд', "2021-11-10")
+    print(result)

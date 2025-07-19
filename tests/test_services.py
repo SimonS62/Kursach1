@@ -1,129 +1,70 @@
 import unittest
-import json
 from datetime import datetime
+import json
 
-
-# Определим CASHBACK_RATES для теста
-CASHBACK_RATES = {
-    'Продукты': 0.05,
-    'Транспорт': 0.02,
-    'Развлечения': 0.03,
-    # Можно добавить другие категории по необходимости
-}
 
 class TestAnalyzeCashbackCategories(unittest.TestCase):
 
     def setUp(self):
-        # Создаем список транзакций с датами, категориями и расходами
-        self.data = [
-            {'date': datetime(2023, 5, 10), 'category': 'Продукты', 'expenses': 100},
-            {'date': datetime(2023, 5, 15), 'category': 'Транспорт', 'expenses': 50},
-            {'date': datetime(2023, 5, 20), 'category': 'Развлечения', 'expenses': 200},
-            {'date': datetime(2023, 4, 25), 'category': 'Продукты', 'expenses': 150},
-            {'date': datetime(2023, 5, 5), 'category': 'Продукты', 'expenses': 50},
-            {'date': datetime(2022, 5, 10), 'category': 'Транспорт', 'expenses': 70},
+        # Пример данных для теста
+        self.transactions = [
+            {'Дата операции': datetime(2021, 11, 10), 'Категория': 'Продукты', 'Сумма операции': 123},
+            {'Дата операции': datetime(2021, 11, 15), 'Категория': 'Транспорт', 'Сумма операции': 47},
+            {'Дата операции': datetime(2021, 11, 20), 'Категория': 'Развлечения', 'Сумма операции': 200},
+            {'Дата операции': datetime(2021, 11, 25), 'Категория': 'Подарки', 'Сумма операции': 550},
+            {'Дата операции': datetime(2021, 11, 30), 'Категория': 'Продукты', 'Сумма операции': 300}
         ]
 
-    def test_cashback_for_may_2023(self):
-        result_json = analyze_cashback_categories(self.data, year=2023, month=5)
+    def test_analyze_cashback_categories_november(self):
+        result_json = analyze_cashback_categories(self.transactions, 2021, 11)
         result = json.loads(result_json)
 
-        # Проверяем наличие категорий в результате
+        # Проверяем наличие всех категорий
         self.assertIn('Продукты', result)
         self.assertIn('Транспорт', result)
         self.assertIn('Развлечения', result)
+        self.assertIn('Подарки', result)
 
-        # Проверяем правильность подсчета кешбэка
-        # Расходы по категориям за май: Продукты=150 (100+50), Транспорт=50, Развлечения=200
-        expected_cashback = {
-            'Продукты': round(150 * CASHBACK_RATES['Продукты']),
-            'Транспорт': round(50 * CASHBACK_RATES['Транспорт']),
-            'Развлечения': round(200 * CASHBACK_RATES['Развлечения'])
-        }
-        self.assertEqual(result, expected_cashback)
+        # Проверяем правильность расчетов кешбэка
+        # Продукты: сумма = 123 + 300 = 423; кешбэк = round(423 * 0.05) = round(21.15) = 21
+        self.assertEqual(result['Продукты'], 21)
 
-    def test_no_transactions_in_month(self):
-        # Месяц без транзакций
-        result_json = analyze_cashback_categories(self.data, year=2021, month=1)
+        # Транспорт: сумма = 47; кешбэк = round(47 * 0.02) = round(0.94) = 1
+        self.assertEqual(result['Транспорт'], 1)
+
+        # Развлечения: сумма = 200; кешбэк = round(200 * 0.03) = round(6) =6
+        self.assertEqual(result['Развлечения'], 6)
+
+        # Подарки: сумма=550; кешбэк=round(550*0.04)=round(22)=22
+        self.assertEqual(result['Подарки'], 22)
+
+    def test_no_transactions_for_month(self):
+        # Транзакции за другой месяц — результат должен быть пустым
+        result_json = analyze_cashback_categories(self.transactions, 2022, 12)
         result = json.loads(result_json)
         self.assertEqual(result, {})
 
-    def test_category_without_rate(self):
-        # Категория без заданного кешбэка в CASHBACK_RATES
-        data = [
-            {'date': datetime(2023, 6, 10), 'category': 'Неизвестная', 'expenses': 100}
+    def test_unknown_category(self):
+        # Добавим транзакцию с новой категорией без ставки кешбэка
+        transactions = self.transactions + [
+            {'Дата операции': datetime(2021, 11, 10), 'Категория': 'Новая категория', 'Сумма операции': 100}
         ]
-        result_json = analyze_cashback_categories(data, year=2023, month=6)
+        result_json = analyze_cashback_categories(transactions, 2021, 11)
         result = json.loads(result_json)
-        # Кешбэк по категории без ставки должен быть нулём или отсутствовать?
-        # В коде: get(cat,0) => кешбэк будет округлен к нулю.
-        self.assertEqual(result.get('Неизвестная'), round(100 * CASHBACK_RATES.get('Неизвестная',0)))
 
-if __name__ == '__main__':
-    unittest.main()
+        # Для новой категории ставка равна нулю
+        self.assertEqual(result.get('Новая категория'), None or False)
 
-
-class TestInvestSavings(unittest.TestCase):
-
-    def setUp(self):
-        # Создаем список транзакций с расходами
-        self.transactions = [
-            {'date': datetime(2024, 4, 10), 'category': 'Продукты', 'expenses': 123},
-            {'date': datetime(2024, 4, 15), 'category': 'Транспорт', 'expenses': 47},
-            {'date': datetime(2024, 4, 20), 'category': 'Развлечения', 'expenses': 200},
-            {'date': datetime(2024, 4, 25), 'category': 'Подарки', 'expenses': 550},
-            {'date': datetime(2024, 3, 30), 'category': 'Продукты', 'expenses': 300}
+    def test_rounding(self):
+        # Проверка округления (например сумма=2.5 при ставке=0.05 даст кешбэк=0)
+        transactions = [
+            {'Дата операции': datetime(2021, 11, 10), 'Категория': 'Продукты', 'Сумма операции': 50}
         ]
-
-    def test_invest_savings_april(self):
-        result_json = invest_savings(self.transactions, rounding_threshold=50)
+        result_json = analyze_cashback_categories(transactions, 2021, 11)
         result = json.loads(result_json)
 
-        # Проверяем общие траты
-        total_spent = sum(t['expenses'] for t in self.transactions if t['date'].month == 4 and t['date'].year == 2024)
-        self.assertEqual(result['Общие траты'], total_spent)
-
-        # Проверяем сумму после округления
-        # Расчеты по транзакциям за апрель:
-        # 123 -> округление до 150 (разница +27)
-        # 47 -> округление до 50 (разница +3)
-        # 200 -> уже кратно 50 (разница 0)
-        # 550 -> уже кратно (разница 0)
-        expected_total_rounded = sum(
-            ((t['expenses'] + 50 - 1) // 50) * 50 for t in self.transactions if
-            t['date'].month == 4 and t['date'].year == 2024
-        )
-        self.assertEqual(result['Общая сумма после округления'], expected_total_rounded)
-
-        # Проверяем накопленную сумму (сумма разниц)
-        expected_difference = sum(
-            (((t['expenses'] + 50 - 1) // 50) * 50 - t['expenses']) for t in self.transactions if
-            t['date'].month == 4 and t['date'].year == 2024
-        )
-        self.assertAlmostEqual(result['Накопленная сумма на инвесткопилке'], expected_difference)
-
-    def test_no_transactions_in_month(self):
-        # Месяц без транзакций
-        result_json = invest_savings(self.transactions, rounding_threshold=50)
-        result = json.loads(result_json)
-
-        # Проверка для месяца без транзакций (например, май)
-        april_transactions = [t for t in self.transactions if t['date'].month == 5]
-        total_spent_april = sum(t['expenses'] for t in april_transactions)
-
-        self.assertEqual(result['Общие траты'], total_spent_april)
-
-    def test_different_rounding_threshold(self):
-        result_json = invest_savings(self.transactions, rounding_threshold=100)
-        result = json.loads(result_json)
-
-        # Проверка суммы после округления с порогом 100
-        total_rounded = sum(
-            ((t['expenses'] + 100 - 1) // 100) * 100 for t in self.transactions if
-            t['date'].month == 4 and t['date'].year == 2024
-        )
-
-        self.assertEqual(result['Общая сумма после округления'], total_rounded)
+        # Расчет: round(50*0.05)=round(2.5)=3 (по правилам Python)
+        self.assertEqual(result['Продукты'], 3)
 
 
 if __name__ == '__main__':

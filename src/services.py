@@ -30,14 +30,14 @@ def analyze_cashback_categories(data, year, month):
     """
     # Фильтруем транзакции по году и месяцу
     filtered = list(filter(
-        lambda t: t['date'].year == year and t['date'].month == month,
+        lambda t: t['Дата операции'].year == year and t['Дата операции'].month == month,
         data
     ))
 
     # Для каждой категории считаем сумму расходов
     def reducer(acc, t):
-        category = t['category']
-        amount = t['expenses']
+        category = t['Категория']
+        amount = t['Сумма операции']
         acc[category] = acc.get(category, 0) + amount
         return acc
 
@@ -52,60 +52,18 @@ def analyze_cashback_categories(data, year, month):
     return json.dumps(cashback_per_category, ensure_ascii=False, indent=2)
 
 
-def invest_savings(data, rounding_threshold=50):
-    """
-    Округляет траты и копит разницу на счет «Инвесткопилка».
-
-    :param data: список транзакций (dict), каждая с датой и расходами.
-    :param rounding_threshold: порог округления (10/50/100).
-    :return: JSON с итогами по округлению и накопленным средствам.
-    """
-
-    def round_amount(amount):
-        """Округляет сумму до ближайшего кратного порогу."""
-        return ((amount + rounding_threshold - 1) // rounding_threshold) * rounding_threshold
-
-    total_spent = sum(t['expenses'] for t in data)
-
-    # Для каждой транзакции считаем округленную сумму и разницу
-    def process_transaction(t):
-        original = t['expenses']
-        rounded = round_amount(original)
-        difference = rounded - original
-        return {
-            'original': original,
-            'rounded': rounded,
-            'difference': difference
-        }
-
-    processed = list(map(process_transaction, data))
-
-    total_rounded = sum(t['rounded'] for t in processed)
-    total_difference = sum(t['difference'] for t in processed)
-
-    result = {
-        'Общие траты': total_spent,
-        'Общая сумма после округления': total_rounded,
-        'Накопленная сумма на инвесткопилке': total_difference
-    }
-
-    return json.dumps(result, ensure_ascii=False, indent=2)
-
-
 # Пример использования внутри модуля или тестов:
 if __name__ == "__main__":
     # Пример данных
     transactions = [
-        {'date': datetime(2024, 4, 10), 'category': 'Продукты', 'expenses': 123},
-        {'date': datetime(2024, 4, 15), 'category': 'Транспорт', 'expenses': 47},
-        {'date': datetime(2024, 4, 20), 'category': 'Развлечения', 'expenses': 200},
-        {'date': datetime(2024, 4, 25), 'category': 'Подарки', 'expenses': 550},
-        {'date': datetime(2024, 3, 30), 'category': 'Продукты', 'expenses': 300}
+        {'Дата операции': datetime(2021, 11, 10), 'Категория': 'Продукты', 'expenses': 123},
+        {'Дата операции': datetime(2021, 11, 15), 'Категория': 'Транспорт', 'expenses': 47},
+        {'Дата операции': datetime(2021, 11, 20), 'Категория': 'Развлечения', 'expenses': 200},
+        {'Дата операции': datetime(2021, 11, 25), 'Категория': 'Подарки', 'expenses': 550},
+        {'Дата операции': datetime(2021, 11, 30), 'Категория': 'Продукты', 'expenses': 300}
     ]
 
-    print("Анализ кешбэка за апрель 2024:")
-    print(analyze_cashback_categories(transactions, [2024], [4]))
+    print("Анализ кешбэка за ноябрь 2021:")
+    print(analyze_cashback_categories(transactions, [2021], [11]))
 
-    print("\nИнвесткопилка при пороге округления 50:")
-    print(invest_savings(transactions, [2024], [4], rounding_threshold=50))
 
