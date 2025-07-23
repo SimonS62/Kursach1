@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from functools import reduce
 import logging
+from collections import defaultdict
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -37,17 +38,13 @@ def analyze_cashback_categories(data, year, month):
     # Для каждой категории считаем сумму расходов
     def reducer(acc, t):
         category = t['Категория']
-        amount = t['Сумма операции']
-        acc[category] = acc.get(category, 0) + amount
+        amount = t['Кэшбэк'] if float(t['Кэшбэк']) > 0 else 0
+        if amount:
+            acc[category] += amount
         return acc
 
-    category_sums = reduce(reducer, filtered, {})
+    category_sums = reduce(reducer, filtered, defaultdict(int))
 
-    # Вычисляем кешбэк по каждой категории
-    cashback_per_category = {
-        cat: round(amount * CASHBACK_RATES.get(cat, 0))
-        for cat, amount in category_sums.items()
-    }
 
     return json.dumps(cashback_per_category, ensure_ascii=False, indent=2)
 
@@ -55,15 +52,9 @@ def analyze_cashback_categories(data, year, month):
 # Пример использования внутри модуля или тестов:
 if __name__ == "__main__":
     # Пример данных
-    transactions = [
-        {'Дата операции': datetime(2021, 11, 10), 'Категория': 'Продукты', 'expenses': 123},
-        {'Дата операции': datetime(2021, 11, 15), 'Категория': 'Транспорт', 'expenses': 47},
-        {'Дата операции': datetime(2021, 11, 20), 'Категория': 'Развлечения', 'expenses': 200},
-        {'Дата операции': datetime(2021, 11, 25), 'Категория': 'Подарки', 'expenses': 550},
-        {'Дата операции': datetime(2021, 11, 30), 'Категория': 'Продукты', 'expenses': 300}
-    ]
+    data = pd.read_excel('../data/operations.xlsx', parse_dates=['Дата операции']).to_dict('records')
 
     print("Анализ кешбэка за ноябрь 2021:")
-    print(analyze_cashback_categories(transactions, [2021], [11]))
+    print(analyze_cashback_categories(data, 2021, 11))
 
 
