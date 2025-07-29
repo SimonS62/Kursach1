@@ -2,6 +2,7 @@ import os
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+from pandas import DataFrame
 
 load_dotenv()
 
@@ -39,40 +40,38 @@ def get_cashback(total_expenses):
 
 
 # Функция получения топ-5 транзакций по сумме
-def fetch_top_transactions():
-    transactions = [
-        {'description': 'Покупка A', 'Сумма операции': 5000},
-        {'description': 'Покупка B', 'Сумма операции': 3000},
-        {'description': 'Покупка C', 'Сумма операции': 2000},
-        {'description': 'Покупка D', 'Сумма операции': 1500},
-        {'description': 'Покупка E', 'Сумма операции': 1200},
-        {'description': 'Покупка F', 'Сумма операции': 800},
+def fetch_top_transactions(sorted_df:DataFrame):
+    top_pay_transactions = []
+    top5 = sorted_df.sort_values(by='Сумма операции',ascending=False)
+    top_transactions = top5.head(5)
+    top_transactions_sorted = top_transactions[
+        ['Дата операции', 'Сумма операции', 'Категория', 'Описание']
     ]
-    top5 = sorted(transactions, key=lambda x: x['Сумма операции'], reverse=True)[:5]
-    return top5
-
-
-# Функция получения курса валют с API
-def fetch_currency_rates():
-    url = "https://api.apilayer.com/exchangerates_data/latest"
-    headers = {
-        "apikey": api_key
-    }
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-        return data.get('rates', {})  # возвращает словарь курсов валют
-    except requests.RequestException as e:
-        print(f"Ошибка при запросе к API: {e}")
-        # Возвращаем фиктивные данные при ошибке
-        return {
-            "USD": 1.0,
-            "EUR": 0.85,
-            "GBP": 0.75,
-            "JPY": 110.0,
-            "CNY": 6.45
+    for i,v in top_transactions_sorted.iterrows():
+        v = {
+            "date": f'{v["Дата операции"]}',
+            "amount": f'{v["Сумма операции"]}',
+            "category": f'{v["Категория"]}',
+            "description": f'{v["Описание"]}'
         }
+        top_pay_transactions.append(v)
+    return top_pay_transactions
+
+
+# # Функция получения курса валют с API
+# api_key = os.getenv('API_KEY')  # Получаем API-ключ из переменной окружения
+#     url = f"https://apilayer.com/marketplace/exchangerates_data-api/convert?to=RUB&from={currency}&amount={amount}"
+#
+#     headers = {
+#         "apikey": api_key
+#     }
+#     try:
+#         response = requests.get(url, headers=headers)
+#         response.raise_for_status()
+#         data = response.json()
+#         return data.get('rates', {})  # возвращает словарь курсов валют
+#     except requests.RequestException as e:
+#         print(f"Ошибка при запросе к API: {e}")
 
 
 # Функция получения стоимости акций с API (например, Alpha Vantage)

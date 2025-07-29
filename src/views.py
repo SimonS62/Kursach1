@@ -1,8 +1,10 @@
+import os.path
 import pandas as pd
 import json
 from datetime import datetime
 from typing import List, Dict, Any
-
+from config import ROOT_DIR
+from src.utils import fetch_top_transactions
 
 # Приветствие
 def get_greeting(hour: int) -> str:
@@ -15,30 +17,35 @@ def get_greeting(hour: int) -> str:
     else:
         return "Доброй ночи"
 
-
 def get_total_expenses(transactions: List[Dict[str, Any]]) -> float:
-    # транзакции — список словарей с ключом 'amount'
     return sum(t['amount'] for t in transactions)
-
 
 def get_last4_digits(card_number: str) -> str:
     return card_number[-4:] if len(card_number) >= 4 else card_number
 
-
 def get_cashback(amount: float) -> float:
-    # логика кешбэка
+    # Примерная логика кешбэка
     return abs(amount) * 0.01
 
-
 def get_currency_rate() -> Dict[str, float]:
-    # Заглушка для получения курсов валют
-    return {"USD": 1.0, "EUR": 0.85}
-
+    api_url = f"https://apilayer.com/marketplace/exchangerates_data-api/convert?to=RUB&from={currency}&amount={amount}"
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        data = response.json()
+        rates = data.get('rates', {})
+        return {
+            'USD': rates.get('USD'),
+            'EUR': rates.get('EUR')
+        }
+    except Exception as e:
+        import logging
+        logging.error(f"Ошибка получения курсов валют: {e}")
+        return {'USD': None, 'EUR': None}
 
 def get_sp500_price() -> float:
     # Заглушка для стоимости индекса S&P 500
     return 4200.0
-
 
 def get_top_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # Топ-5 транзакций по сумме
@@ -48,8 +55,10 @@ def get_top_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, A
 
 # Основная функция
 def main_function(date_str):
+    operations_path = os.path.join(ROOT_DIR, 'data', 'operations.xlsx')
+    user_settings_path = os.path.join(ROOT_DIR, 'user_settings.json')
     try:
-        data = pd.read_excel('../data/operations.xlsx', parse_dates=['Дата операции'])
+        data = pd.read_excel(operations_path, parse_dates=['Дата операции'])
     except Exception as e:
         return json.dumps({"error": f"Ошибка при чтении файла: {e}"})
 
@@ -66,7 +75,7 @@ def main_function(date_str):
 
     # Чтение настроек пользователя
     try:
-        with open(r'..\Users\Windows\PycharmProjects\ProjectKursach1\user_settings.json', 'r',
+        with open(user_settings_path, 'r',
                   encoding='utf-8') as file:
             user_settings = json.load(file)
     except Exception as e:
@@ -85,9 +94,9 @@ def main_function(date_str):
     # колонка 'Категория' и 'Сумма операции'
     for _, row in data.iterrows():
         transaction = {
-            'card_number': row.get('Карта', ''),
+            'card_number': row.get('Номер карты', ''),
             'amount': row.get('Сумма операции', 0),
-            'Дата': row.get('Дата операции')
+            'date': row.get('Дата операции')
 
         }
         transactions.append(transaction)
@@ -95,7 +104,7 @@ def main_function(date_str):
     # Фильтрация транзакций по дате (если нужно)
     filtered_transactions = [
         t for t in transactions
-        if start_dt <= t['Дата'] <= dt
+        if start_dt <= t['date'] <= dt
     ]
 
     total_expenses = get_total_expenses(filtered_transactions)
@@ -103,7 +112,8 @@ def main_function(date_str):
     # Формируем список карт с последними 4 цифрами и кешбэком
     cards_info = []
     for t in filtered_transactions:
-        last4 = get_last4_digits(t['card_number'])
+        last4 = get_last4_digits(str(t['card_number']))
+        print(last4)
         cashback = get_cashback(t['amount'])
         cards_info.append({
             'last4_digits': last4,
@@ -111,8 +121,9 @@ def main_function(date_str):
             'cashback': cashback
         })
 
-    # Топ-5 транзакций по сумме
-    top_transactions = get_top_transactions(filtered_transactions)
+    # # Топ-5 транзакций по сумме
+    # top_transactions = get_top_transactions(filtered_transactions)
+    top_transactions = fetch_top_transactions(data)
 
     # Формируем ответ
     response = {
@@ -129,8 +140,7 @@ def main_function(date_str):
 
 # Пример вызова функции
 if __name__ == "__main__":
-    date_input = "2024-04-27 15:30:00"
+    date_input = "2021-12-17 01:02:03"
 
-print(main_function(date_input))
 
 
