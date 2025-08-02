@@ -2,55 +2,8 @@ import os.path
 import pandas as pd
 import json
 from datetime import datetime
-from typing import List, Dict, Any
-from config import ROOT_DIR
-from src.utils import fetch_top_transactions
-
-# Приветствие
-def get_greeting(hour: int) -> str:
-    if 5 <= hour < 12:
-        return "Доброе утро"
-    elif 12 <= hour < 18:
-        return "Добрый день"
-    elif 18 <= hour < 23:
-        return "Добрый вечер"
-    else:
-        return "Доброй ночи"
-
-def get_total_expenses(transactions: List[Dict[str, Any]]) -> float:
-    return sum(t['amount'] for t in transactions)
-
-def get_last4_digits(card_number: str) -> str:
-    return card_number[-4:] if len(card_number) >= 4 else card_number
-
-def get_cashback(amount: float) -> float:
-    # Примерная логика кешбэка
-    return abs(amount) * 0.01
-
-def get_currency_rate() -> Dict[str, float]:
-    api_url = f"https://apilayer.com/marketplace/exchangerates_data-api/convert?to=RUB&from={currency}&amount={amount}"
-    try:
-        response = requests.get(api_url)
-        response.raise_for_status()
-        data = response.json()
-        rates = data.get('rates', {})
-        return {
-            'USD': rates.get('USD'),
-            'EUR': rates.get('EUR')
-        }
-    except Exception as e:
-        import logging
-        logging.error(f"Ошибка получения курсов валют: {e}")
-        return {'USD': None, 'EUR': None}
-
-def get_sp500_price() -> float:
-    # Заглушка для стоимости индекса S&P 500
-    return 4200.0
-
-def get_top_transactions(transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    # Топ-5 транзакций по сумме
-    sorted_tx = sorted(transactions, key=lambda x: abs(x['amount']), reverse=True)
-    return sorted_tx[:5]
+from config import ROOT_DIR,API_KEY
+from src.utils import fetch_top_transactions,get_stocks,get_greeting,get_total_expenses,get_last4,get_cashback,get_currency_rate
 
 
 # Основная функция
@@ -71,7 +24,8 @@ def main_function(date_str):
     start_dt = dt.replace(day=1, hour=0, minute=0, second=0)
 
     # Получаем приветствие
-    greeting = get_greeting(datetime.now().hour)
+    greeting = get_greeting(datetime.now())
+    print(greeting)
 
     # Чтение настроек пользователя
     try:
@@ -112,8 +66,7 @@ def main_function(date_str):
     # Формируем список карт с последними 4 цифрами и кешбэком
     cards_info = []
     for t in filtered_transactions:
-        last4 = get_last4_digits(str(t['card_number']))
-        print(last4)
+        last4 = get_last4(str(t['card_number']))
         cashback = get_cashback(t['amount'])
         cards_info.append({
             'last4_digits': last4,
@@ -130,8 +83,8 @@ def main_function(date_str):
         "greeting": greeting,
         "cards": cards_info,
         "total_expenses": total_expenses,
-        "currency_rates": get_currency_rate(),
-        "sp500_price": get_sp500_price(),
+        "currency_rates": get_currency_rate(user_currencies),
+        "get_stocks": get_stocks(user_stocks),
         "top_transactions": top_transactions
     }
 
